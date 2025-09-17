@@ -11,22 +11,18 @@ export async function POST(req: NextRequest) {
     const messages = (body?.messages || []) as Array<{ role: 'user' | 'assistant' | 'system'; content: string }>
     const token = body?.token as string | undefined
 
-    // Verify Cloudflare Turnstile token
+    // Optional Cloudflare Turnstile verification
     const secretKey = process.env.TURNSTILE_SECRET_KEY
-    if (!secretKey) {
-      return NextResponse.json({ error: 'Server misconfigured: TURNSTILE_SECRET_KEY missing' }, { status: 500 })
-    }
-    if (!token) {
-      return NextResponse.json({ error: 'Missing bot verification token' }, { status: 400 })
-    }
-    const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `secret=${encodeURIComponent(secretKey)}&response=${encodeURIComponent(token)}`,
-    })
-    const verifyJson = (await verifyRes.json()) as { success?: boolean; 'error-codes'?: string[] }
-    if (!verifyJson.success) {
-      return NextResponse.json({ error: 'Bot verification failed', details: verifyJson['error-codes'] || [] }, { status: 400 })
+    if (secretKey && token) {
+      const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `secret=${encodeURIComponent(secretKey)}&response=${encodeURIComponent(token)}`,
+      })
+      const verifyJson = (await verifyRes.json()) as { success?: boolean; 'error-codes'?: string[] }
+      if (!verifyJson.success) {
+        return NextResponse.json({ error: 'Bot verification failed', details: verifyJson['error-codes'] || [] }, { status: 400 })
+      }
     }
 
     const systemPrompt = {

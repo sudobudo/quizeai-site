@@ -15,6 +15,7 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const [token, setToken] = useState('')
+  const turnstileEnabled = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -23,7 +24,7 @@ export default function ChatPage() {
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault()
     if (!input.trim()) return
-    if (!token) {
+    if (turnstileEnabled && !token) {
       setMessages((m) => [...m, { role: 'assistant', content: 'Please complete the bot check before sending.' }])
       return
     }
@@ -36,7 +37,7 @@ export default function ChatPage() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [...messages, userMessage], token }),
+        body: JSON.stringify({ messages: [...messages, userMessage], token: turnstileEnabled ? token : undefined }),
       })
       if (!res.ok) throw new Error('Request failed')
       const data = await res.json()
@@ -73,9 +74,11 @@ export default function ChatPage() {
             Clear chat
           </button>
         </div>
-        <div className="mb-4 flex justify-center">
-          <Turnstile onVerify={(t) => setToken(t)} />
-        </div>
+        {turnstileEnabled && (
+          <div className="mb-4 flex justify-center">
+            <Turnstile onVerify={(t) => setToken(t)} />
+          </div>
+        )}
         <div className="card p-4 h-[60vh] overflow-y-auto space-y-3">
           {messages.map((m, i) => (
             <div key={i} className={m.role === 'user' ? 'text-right' : 'text-left'}>
@@ -106,7 +109,7 @@ export default function ChatPage() {
             onKeyDown={onKeyDown}
             disabled={loading}
           />
-          <button className="btn btn-primary" disabled={loading || input.trim().length === 0 || !token}>
+          <button className="btn btn-primary" disabled={loading || input.trim().length === 0 || (turnstileEnabled && !token)}>
             {loading ? 'Thinking…' : 'Send'}
           </button>
         </form>
