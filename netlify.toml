@@ -5,7 +5,7 @@
 [functions]
   node_bundler = "esbuild"
 
-[plugins]
+[[plugins]]
   package = "@netlify/plugin-nextjs"
 
 # Set Node.js version compatible with Next.js 14
